@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - Idea Publishing Platform</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <header>
+        <h1>Idea Publishing Platform</h1>
+        <nav>
+            <a href="index.html">Home</a>
+            <div id="authLinks"></div>
+            <div id="userInfo"></div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="profile-section">
+            <h2>User Profile</h2>
+            <div id="profileContainer">
+                <div class="loading">Loading profile...</div>
+            </div>
+        </section>
+        
+        <section class="user-ideas">
+            <h2>My Ideas</h2>
+            <div id="userIdeasContainer">
+                <div class="loading">Loading your ideas...</div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2023 Idea Publishing Platform</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/ideas.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Update auth UI
+            updateAuthUI();
+            
+            // Check if user is authenticated
+            if (!isAuthenticated()) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            try {
+                // Get user profile
+                const user = await getCurrentUser();
+                
+                if (!user) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                // Render profile
+                renderProfile(user);
+                
+                // Get user's ideas
+                const userIdeas = await apiRequest(`/ideas?user=${user._id}`);
+                renderUserIdeas(userIdeas);
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                document.getElementById('profileContainer').innerHTML = '<p class="error">Failed to load profile. Please try again later.</p>';
+            }
+        });
+        
+        // Render user profile
+        function renderProfile(user) {
+            const container = document.getElementById('profileContainer');
+            
+            container.innerHTML = `
+                <div class="profile-card">
+                    <div class="profile-header">
+                        <div class="profile-avatar">
+                            ${user.profilePicture ? 
+                                `<img src="${user.profilePicture}" alt="${user.username}">` : 
+                                `<div class="avatar-placeholder">${user.username.charAt(0).toUpperCase()}</div>`
+                            }
+                        </div>
+                        <div class="profile-info">
+                            <h3>${user.username}</h3>
+                            <p>${user.email}</p>
+                            <p>Member since ${new Date(user.createdAt).toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-bio">
+                        <h4>Bio</h4>
+                        <p>${user.bio || 'No bio provided yet.'}</p>
+                    </div>
+                    
+                    <button id="editProfileBtn" class="primary-btn">Edit Profile</button>
+                </div>
+                
+                <div id="editProfileForm" class="hidden">
+                    <h3>Edit Profile</h3>
+                    <form id="profileForm">
+                        <div class="form-group">
+                            <label for="username">Username:</label>
+                            <input type="text" id="username" name="username" value="${user.username}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="bio">Bio:</label>
+                            <textarea id="bio" name="bio" rows="4">${user.bio || ''}</textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="profilePicture">Profile Picture URL:</label>
+                            <input type="url" id="profilePicture" name="profilePicture" value="${user.profilePicture || ''}">
+                        </div>
+                        
+                        <button type="submit">Save Changes</button>
+                        <button type="button" id="cancelEditBtn">Cancel</button>
+                    </form>
+                </div>
+            `;
+            
+            // Add event listeners
+            document.getElementById('editProfileBtn').addEventListener('click', function() {
+                document.querySelector('.profile-card').classList.add('hidden');
+                document.getElementById('editProfileForm').classList.remove('hidden');
+            });
+            
+            document.getElementById('cancelEditBtn').addEventListener('click', function() {
+                document.querySelector('.profile-card').classList.remove('hidden');
+                document.getElementById('editProfileForm').classList.add('hidden');
+            });
+            
+            document.getElementById('profileForm').addEventListener('submit', async function(event) {
+                event.preventDefault();
+                
+                const username = document.getElementById('username').value;
+                const bio = document.getElementById('bio').value;
+                const profilePicture = document.getElementById('profilePicture').value;
+                
+                try {
+                    const updatedUser = await apiRequest('/auth/user', {
+                        method: 'PUT',
+                        body: JSON.stringify({ username, bio, profilePicture })
+                    });
+                    
+                    renderProfile(updatedUser);
+                } catch (error) {
+                    console.error('Error updating profile:', error);
+                    alert('Failed to update profile. Please try again.');
+                }
+            });
+        }
+        
+        // Render user's ideas
+        function renderUserIdeas(ideasData) {
+            const container = document.getElementById('userIdeasContainer');
+            
+            if (!ideasData.ideas || ideasData.ideas.length === 0) {
+                container.innerHTML = '<p>You haven\'t published any ideas yet.</p>';
+                return;
+            }
+            
+            container.innerHTML = '<div class="ideas-grid"></div>';
+            const grid = container.querySelector('.ideas-grid');
+            
+            ideasData.ideas.forEach(idea => {
+                const ideaCard = document.createElement('div');
+                ideaCard.className = 'idea-card';
+                ideaCard.innerHTML = `
+                    <div class="idea-header">
+                        <h3 class="idea-title">${idea.title}</h3>
+                        <span class="idea-category">${idea.category}</span>
+                    </div>
+                    <p class="idea-description">${idea.description.substring(0, 150)}${idea.description.length > 150 ? '...' : ''}</p>
+                    <div class="idea-meta">
+                        <span>${new Date(idea.createdAt).toLocaleDateString()}</span>
+                        <span>${idea.views} views</span>
+                    </div>
+                    <div class="idea-stats">
+                        <span><i class="fas fa-comment"></i> ${idea.comments ? idea.comments.length : 0} comments</span>
+                        <span><i class="fas fa-thumbs-up"></i> ${idea.votes ? idea.votes.upvotes.length : 0} upvotes</span>
+                    </div>
+                    <div class="idea-actions">
+                        <a href="idea.html?id=${idea._id}" class="view-idea-btn">View</a>
+                        <button class="edit-btn" data-id="${idea._id}">Edit</button>
+                        <button class="delete-btn" data-id="${idea._id}">Delete</button>
+                    </div>
+                `;
+                
+                grid.appendChild(ideaCard);
+            });
+            
+            // Add event listeners for edit and delete buttons
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const ideaId = this.dataset.id;
+                    window.location.href = `edit-idea.html?id=${ideaId}`;
+                });
+            });
+            
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const ideaId = this.dataset.id;
+                    
+                    if (confirm('Are you sure you want to delete this idea? This action cannot be undone.')) {
+                        try {
+                            await deleteIdea(ideaId);
+                            
+                            // Reload user's ideas
+                            const user = await getCurrentUser();
+                            const userIdeas = await apiRequest(`/ideas?user=${user._id}`);
+                            renderUserIdeas(userIdeas);
+                            
+                            alert('Idea deleted successfully.');
+                        } catch (error) {
+                            console.error('Error deleting idea:', error);
+                            alert('Failed to delete idea. Please try again.');
+                        }
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>

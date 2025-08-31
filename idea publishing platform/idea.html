@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idea Details - Idea Publishing Platform</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <header>
+        <h1>Idea Publishing Platform</h1>
+        <nav>
+            <a href="index.html">Home</a>
+            <div id="authLinks"></div>
+            <div id="userInfo"></div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="idea-details">
+            <div id="ideaContainer">
+                <div class="loading">Loading idea details...</div>
+            </div>
+        </section>
+        
+        <section class="idea-attachments">
+            <h3>Attachments</h3>
+            <div id="attachmentsContainer">
+                <div class="loading">Loading attachments...</div>
+            </div>
+            
+            <div id="uploadAttachment" class="hidden">
+                <h4>Add Attachment</h4>
+                <form id="attachmentForm">
+                    <div class="form-group">
+                        <label for="file">Select File:</label>
+                        <input type="file" id="file" name="file" required>
+                    </div>
+                    <button type="submit">Upload</button>
+                </form>
+            </div>
+        </section>
+        
+        <section class="idea-comments">
+            <h3>Comments</h3>
+            <div id="commentsContainer">
+                <div class="loading">Loading comments...</div>
+            </div>
+            
+            <div id="addComment" class="hidden">
+                <h4>Add Comment</h4>
+                <form id="commentForm">
+                    <div class="form-group">
+                        <textarea id="commentText" name="commentText" rows="3" required placeholder="Write your comment here..."></textarea>
+                    </div>
+                    <button type="submit">Post Comment</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2023 Idea Publishing Platform</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/ideas.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Get idea ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const ideaId = urlParams.get('id');
+            
+            if (!ideaId) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // Update auth UI
+            updateAuthUI();
+            
+            // Load idea details
+            try {
+                const idea = await getIdeaById(ideaId);
+                renderIdeaDetails(idea);
+                renderAttachments(idea);
+                renderComments(idea);
+                
+                // Show comment form for authenticated users
+                if (isAuthenticated()) {
+                    document.getElementById('addComment').classList.remove('hidden');
+                    
+                    // Show upload form if user is the idea owner
+                    const currentUser = await getCurrentUser();
+                    if (currentUser && currentUser._id === idea.user._id) {
+                        document.getElementById('uploadAttachment').classList.remove('hidden');
+                    }
+                }
+                
+                // Handle comment form submission
+                const commentForm = document.getElementById('commentForm');
+                commentForm.addEventListener('submit', async function(event) {
+                    event.preventDefault();
+                    
+                    const commentText = document.getElementById('commentText').value;
+                    
+                    try {
+                        const updatedComments = await addComment(ideaId, commentText);
+                        renderComments({ comments: updatedComments });
+                        commentForm.reset();
+                    } catch (error) {
+                        console.error('Error adding comment:', error);
+                        alert('Failed to add comment. Please try again.');
+                    }
+                });
+                
+                // Handle attachment upload
+                const attachmentForm = document.getElementById('attachmentForm');
+                attachmentForm.addEventListener('submit', async function(event) {
+                    event.preventDefault();
+                    
+                    const fileInput = document.getElementById('file');
+                    const file = fileInput.files[0];
+                    
+                    if (!file) {
+                        alert('Please select a file to upload');
+                        return;
+                    }
+                    
+                    try {
+                        const updatedAttachments = await uploadFile(ideaId, file);
+                        renderAttachments({ attachments: updatedAttachments });
+                        attachmentForm.reset();
+                    } catch (error) {
+                        console.error('Error uploading file:', error);
+                        alert('Failed to upload file. Please try again.');
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading idea:', error);
+                document.getElementById('ideaContainer').innerHTML = '<p class="error">Failed to load idea details. Please try again later.</p>';
+            }
+        });
+        
+        // Render idea details
+        function renderIdeaDetails(idea) {
+            const container = document.getElementById('ideaContainer');
+            
+            document.title = `${idea.title} - Idea Publishing Platform`;
+            
+            container.innerHTML = `
+                <div class="idea-header">
+                    <h2>${idea.title}</h2>
+                    <span class="idea-category">${idea.category}</span>
+                </div>
+                
+                <div class="idea-content">
+                    <p>${idea.description}</p>
+                </div>
+                
+                <div class="idea-meta">
+                    <div class="idea-author">
+                        <span>By ${idea.user ? idea.user.username : 'Anonymous'}</span>
+                    </div>
+                    <div class="idea-date">
+                        <span>Published on ${new Date(idea.createdAt).toLocaleDateString()}</span>
+                    </div>
+                </div>
+                
+                <div class="idea-stats">
+                    <span><i class="fas fa-eye"></i> ${idea.views} views</span>
+                    <div class="vote-controls">
+                        <button id="upvoteBtn" class="vote-btn upvote" data-vote="up">
+                            <i class="fas fa-arrow-up"></i> ${idea.votes ? idea.votes.upvotes.length : 0}
+                        </button>
+                        <span class="vote-count">${idea.votes ? (idea.votes.upvotes.length - idea.votes.downvotes.length) : 0}</span>
+                        <button id="downvoteBtn" class="vote-btn downvote" data-vote="down">
+                            <i class="fas fa-arrow-down"></i> ${idea.votes ? idea.votes.downvotes.length : 0}
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Add event listeners to vote buttons
+            document.getElementById('upvoteBtn').addEventListener('click', async function() {
+                if (!isAuthenticated()) {
+                    alert('Please login to vote on ideas');
+                    return;
+                }
+                
+                try {
+                    const result = await voteIdea(idea._id, 'up');
+                    updateVoteUI(result);
+                } catch (error) {
+                    console.error('Error voting:', error);
+                    alert('Failed to vote. Please try again.');
+                }
+            });
+            
+            document.getElementById('downvoteBtn').addEventListener('click', async function() {
+                if (!isAuthenticated()) {
+                    alert('Please login to vote on ideas');
+                    return;
+                }
+                
+                try {
+                    const result = await voteIdea(idea._id, 'down');
+                    updateVoteUI(result);
+                } catch (error) {
+                    console.error('Error voting:', error);
+                    alert('Failed to vote. Please try again.');
+                }
+            });
+        }
+        
+        // Update vote UI
+        function updateVoteUI(result) {
+            const upvoteBtn = document.getElementById('upvoteBtn');
+            const downvoteBtn = document.getElementById('downvoteBtn');
+            const voteCount = document.querySelector('.vote-count');
+            
+            upvoteBtn.innerHTML = `<i class="fas fa-arrow-up"></i> ${result.upvotes}`;
+            downvoteBtn.innerHTML = `<i class="fas fa-arrow-down"></i> ${result.downvotes}`;
+            voteCount.textContent = result.voteCount;
+        }
+        
+        // Render attachments
+        function renderAttachments(idea) {
+            const container = document.getElementById('attachmentsContainer');
+            
+            if (!idea.attachments || idea.attachments.length === 0) {
+                container.innerHTML = '<p>No attachments for this idea.</p>';
+                return;
+            }
+            
+            container.innerHTML = '<ul class="attachments-list"></ul>';
+            const list = container.querySelector('.attachments-list');
+            
+            idea.attachments.forEach(attachment => {
+                const item = document.createElement('li');
+                item.className = 'attachment-item';
+                
+                // Determine icon based on file type
+                let icon = 'fa-file';
+                if (attachment.fileType) {
+                    if (attachment.fileType.includes('image')) {
+                        icon = 'fa-file-image';
+                    } else if (attachment.fileType.includes('pdf')) {
+                        icon = 'fa-file-pdf';
+                    } else if (attachment.fileType.includes('word') || attachment.fileType.includes('document')) {
+                        icon = 'fa-file-word';
+                    } else if (attachment.fileType.includes('excel') || attachment.fileType.includes('spreadsheet')) {
+                        icon = 'fa-file-excel';
+                    }
+                }
+                
+                item.innerHTML = `
+                    <i class="fas ${icon}"></i>
+                    <a href="${attachment.fileUrl}" target="_blank">${attachment.fileName}</a>
+                    <span class="attachment-date">${new Date(attachment.uploadDate).toLocaleDateString()}</span>
+                `;
+                
+                // Add delete button for idea owner
+                getCurrentUser().then(user => {
+                    if (user && user._id === idea.user._id) {
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'delete-btn';
+                        deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                        deleteBtn.addEventListener('click', async () => {
+                            if (confirm('Are you sure you want to delete this attachment?')) {
+                                try {
+                                    const updatedAttachments = await deleteFile(idea._id, attachment._id);
+                                    renderAttachments({ attachments: updatedAttachments });
+                                } catch (error) {
+                                    console.error('Error deleting file:', error);
+                                    alert('Failed to delete file. Please try again.');
+                                }
+                            }
+                        });
+                        item.appendChild(deleteBtn);
+                    }
+                });
+                
+                list.appendChild(item);
+            });
+        }
+        
+        // Render comments
+        function renderComments(idea) {
+            const container = document.getElementById('commentsContainer');
+            
+            if (!idea.comments || idea.comments.length === 0) {
+                container.innerHTML = '<p>No comments yet. Be the first to comment!</p>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            idea.comments.forEach(comment => {
+                const commentDiv = document.createElement('div');
+                commentDiv.className = 'comment';
+                
+                commentDiv.innerHTML = `
+                    <div class="comment-header">
+                        <div class="comment-author">
+                            ${comment.user ? comment.user.username : 'Anonymous'}
+                        </div>
+                        <div class="comment-date">
+                            ${new Date(comment.date).toLocaleDateString()}
+                        </div>
+                    </div>
+                    <div class="comment-content">
+                        ${comment.text}
+                    </div>
+                `;
+                
+                // Add delete button for comment author
+                getCurrentUser().then(user => {
+                    if (user && comment.user && user._id === comment.user._id) {
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'delete-btn';
+                        deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Delete';
+                        deleteBtn.addEventListener('click', async () => {
+                            if (confirm('Are you sure you want to delete this comment?')) {
+                                try {
+                                    const urlParams = new URLSearchParams(window.location.search);
+                                    const ideaId = urlParams.get('id');
+                                    const updatedComments = await deleteComment(ideaId, comment._id);
+                                    renderComments({ comments: updatedComments });
+                                } catch (error) {
+                                    console.error('Error deleting comment:', error);
+                                    alert('Failed to delete comment. Please try again.');
+                                }
+                            }
+                        });
+                        commentDiv.appendChild(deleteBtn);
+                    }
+                });
+                
+                container.appendChild(commentDiv);
+            });
+        }
+    </script>
+</body>
+</html>

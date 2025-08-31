@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idea Publishing Platform</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <div class="particles"></div>
+    <header>
+        <h1>Idea Publishing Platform</h1>
+        <p>Share your innovative ideas with the world!</p>
+        <nav>
+            <div id="authLinks"></div>
+            <div id="userInfo"></div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="search-filter">
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Search ideas...">
+                <button id="searchBtn"><i class="fas fa-search"></i></button>
+            </div>
+            
+            <div class="filter-container">
+                <select id="categoryFilter">
+                    <option value="">All Categories</option>
+                    <option value="technology">Technology</option>
+                    <option value="business">Business</option>
+                    <option value="health">Health</option>
+                    <option value="science">Science</option>
+                    <option value="art">Art & Design</option>
+                    <option value="environment">Environment</option>
+                    <option value="social">Social Impact</option>
+                    <option value="entertainment">Entertainment</option>
+                    <option value="other">Other</option>
+                </select>
+                
+                <select id="sortBy">
+                    <option value="createdAt">Newest First</option>
+                    <option value="voteCount">Most Popular</option>
+                    <option value="views">Most Viewed</option>
+                </select>
+            </div>
+        </section>
+        
+        <section id="ideaFormSection" class="idea-form hidden">
+            <h2>Submit Your Idea</h2>
+            <form id="ideaForm">
+                <div class="form-group">
+                    <label for="title">Title:</label>
+                    <input type="text" id="title" name="title" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description:</label>
+                    <textarea id="description" name="description" rows="5" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="category">Category:</label>
+                    <select id="category" name="category">
+                        <option value="technology">Technology</option>
+                        <option value="business">Business</option>
+                        <option value="health">Health</option>
+                        <option value="mathematics">Mathematics</option>
+                        <option value="physics">Physics</option>
+                        <option value="chemistry">Chemistry</option>
+                        <option value="biology">Biology</option>
+                        <option value="literature">Literature & Language</option>
+                        <option value="history">History</option>
+                        <option value="geography">Geography</option>
+                        <option value="computer_science">Computer Science</option>
+                        <option value="engineering">Engineering</option>
+                        <option value="economics">Economics</option>
+                        <option value="psychology">Psychology</option>
+                        <option value="philosophy">Philosophy</option>
+                        <option value="music">Music Education</option>
+                        <option value="physical_education">Physical Education</option>
+                        <option value="arts">Arts & Humanities</option>
+                        <option value="law">Law & Governance</option>
+                        <option value="education">Education & Training</option>
+                        <option value="marketing">Marketing & Advertising</option>
+                        <option value="real_estate">Real Estate</option>
+                        <option value="nonprofit">Nonprofit & Charity</option>
+                        <option value="automotive">Automotive & Transportation</option>
+                        <option value="fashion">Fashion & Beauty</option>
+                        <option value="gaming">Gaming & Esports</option>
+                        <option value="media">Media & Journalism</option>
+                        <option value="telecommunications">Telecommunications</option>
+                        <option value="cybersecurity">Cybersecurity</option>
+                        <option value="blockchain">Blockchain & Cryptocurrency</option>
+                        <option value="artificial_intelligence">Artificial Intelligence</option>
+                        <option value="virtual_reality">Virtual Reality</option>
+                        <option value="augmented_reality">Augmented Reality</option>
+                        <option value="internet_of_things">Internet of Things</option>
+                        <option value="cloud_computing">Cloud Computing</option>
+                        <option value="big_data">Big Data & Analytics</option>
+                        <option value="mobile_app_development">Mobile App Development</option>
+                        <option value="web_development">Web Development</option>
+                        <option value="data_science">Data Science</option>
+                        <option value="machine_learning">Machine Learning</option>
+                        <option value="robotics">Robotics</option>
+                        <option value="sustainability">Sustainability & Green Tech</option>
+                        <option value="biotechnology">Biotechnology</option>
+                        <option value="nanotechnology">Nanotechnology</option>
+                        <option value="quantum_computing">Quantum Computing</option>
+                        <option value="augmented_intelligence">Augmented Intelligence</option>
+                        <option value="smart_cities">Smart Cities</option>  
+                        <option value="art">Art & Design</option>
+                        <option value="environment">Environment</option>
+                        <option value="science">Science</option>
+                        <option value="social">Social Impact</option>
+                        <option value="entertainment">Entertainment</option>
+                        <option value="finance">Finance</option>
+                        <option value="food">Food & Cuisine</option>
+                        <option value="travel">Travel & Tourism</option>
+                        <option value="sports">Sports & Fitness</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <button type="submit">Publish Idea</button>
+            </form>
+        </section>
+
+        <section class="ideas-list">
+            <div class="ideas-header">
+                <h2>Published Ideas</h2>
+                <button id="newIdeaBtn" class="primary-btn"><i class="fas fa-plus"></i> New Idea</button>
+            </div>
+            <div id="ideasContainer">
+                <div class="loading">Loading ideas...</div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2023 Idea Publishing Platform</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/ideas.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Immediately show auth buttons for testing
+            const authLinks = document.getElementById('authLinks');
+            if (authLinks) {
+                authLinks.innerHTML = `
+                    <button id="loginBtn" class="auth-btn">Login</button>
+                    <button id="registerBtn" class="auth-btn">Register</button>
+                `;
+                
+                document.getElementById('loginBtn').addEventListener('click', () => {
+                    window.location.href = 'login.html';
+                });
+                
+                document.getElementById('registerBtn').addEventListener('click', () => {
+                    window.location.href = 'register.html';
+                });
+            }
+            
+            // Update auth UI
+            // updateAuthUI();
+            
+            // Set up search and filter
+            const searchInput = document.getElementById('searchInput');
+            const searchBtn = document.getElementById('searchBtn');
+            const categoryFilter = document.getElementById('categoryFilter');
+            const sortBySelect = document.getElementById('sortBy');
+            
+            // Load initial ideas
+            loadIdeas();
+            
+            // Search button click
+            searchBtn.addEventListener('click', function() {
+                loadIdeas(1);
+            });
+            
+            // Search on enter key
+            searchInput.addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    loadIdeas(1);
+                }
+            });
+            
+            // Category filter change
+            categoryFilter.addEventListener('change', function() {
+                loadIdeas(1);
+            });
+            
+            // Sort by change
+            sortBySelect.addEventListener('change', function() {
+                loadIdeas(1);
+            });
+            
+            // New idea button
+            const newIdeaBtn = document.getElementById('newIdeaBtn');
+            newIdeaBtn.addEventListener('click', function() {
+                if (!isAuthenticated()) {
+                    alert('Please login to publish an idea');
+                    return;
+                }
+                
+                const ideaFormSection = document.getElementById('ideaFormSection');
+                ideaFormSection.classList.toggle('hidden');
+                
+                // Scroll to form
+                if (!ideaFormSection.classList.contains('hidden')) {
+                    ideaFormSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+            
+            // Idea form submission
+            const ideaForm = document.getElementById('ideaForm');
+            ideaForm.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                
+                const title = document.getElementById('title').value;
+                const description = document.getElementById('description').value;
+                const category = document.getElementById('category').value;
+                
+                try {
+                    await createIdea({ title, description, category });
+                    
+                    // Reset form and hide it
+                    ideaForm.reset();
+                    document.getElementById('ideaFormSection').classList.add('hidden');
+                    
+                    // Reload ideas
+                    loadIdeas();
+                    
+                    alert('Your idea has been published successfully!');
+                } catch (error) {
+                    console.error('Error publishing idea:', error);
+                    alert('Failed to publish idea. Please try again.');
+                }
+            });
+        });
+        
+        // Load ideas with filters
+        async function loadIdeas(page = 1) {
+            const ideasContainer = document.getElementById('ideasContainer');
+            ideasContainer.innerHTML = '<div class="loading">Loading ideas...</div>';
+            
+            const search = document.getElementById('searchInput').value;
+            const category = document.getElementById('categoryFilter').value;
+            const sortBySelect = document.getElementById('sortBy');
+            const sortBy = sortBySelect.value;
+            
+            // Determine sort order
+            let order = 'desc';
+            if (sortBy === 'voteCount') {
+                order = 'desc';
+            }
+            
+            try {
+                const ideasData = await getIdeas(page, { search, category, sortBy, order });
+                renderIdeasList(ideasData, 'ideasContainer');
+            } catch (error) {
+                console.error('Error loading ideas:', error);
+                ideasContainer.innerHTML = '<p class="error">Failed to load ideas. Please try again later.</p>';
+            }
+        }
+    </script>
+</body>
+</html>

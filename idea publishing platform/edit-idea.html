@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Idea - Idea Publishing Platform</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <header>
+        <h1>Idea Publishing Platform</h1>
+        <nav>
+            <a href="index.html">Home</a>
+            <div id="authLinks"></div>
+            <div id="userInfo"></div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="idea-form">
+            <h2>Edit Idea</h2>
+            <div id="editFormContainer">
+                <div class="loading">Loading idea details...</div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2023 Idea Publishing Platform</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/ideas.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Update auth UI
+            updateAuthUI();
+            
+            // Check if user is authenticated
+            if (!isAuthenticated()) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Get idea ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const ideaId = urlParams.get('id');
+            
+            if (!ideaId) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            try {
+                // Get idea details
+                const idea = await getIdeaById(ideaId);
+                
+                // Check if user is the owner of the idea
+                const currentUser = await getCurrentUser();
+                if (currentUser._id !== idea.user._id) {
+                    alert('You are not authorized to edit this idea');
+                    window.location.href = 'index.html';
+                    return;
+                }
+                
+                // Render edit form
+                renderEditForm(idea);
+            } catch (error) {
+                console.error('Error loading idea:', error);
+                document.getElementById('editFormContainer').innerHTML = '<p class="error">Failed to load idea details. Please try again later.</p>';
+            }
+        });
+        
+        // Render edit form
+        function renderEditForm(idea) {
+            const container = document.getElementById('editFormContainer');
+            
+            container.innerHTML = `
+                <form id="editIdeaForm">
+                    <div class="form-group">
+                        <label for="title">Title:</label>
+                        <input type="text" id="title" name="title" value="${idea.title}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">Description:</label>
+                        <textarea id="description" name="description" rows="5" required>${idea.description}</textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="category">Category:</label>
+                        <select id="category" name="category">
+                            <option value="technology" ${idea.category === 'technology' ? 'selected' : ''}>Technology</option>
+                            <option value="business" ${idea.category === 'business' ? 'selected' : ''}>Business</option>
+                            <option value="health" ${idea.category === 'health' ? 'selected' : ''}>Health</option>
+                            <option value="science" ${idea.category === 'science' ? 'selected' : ''}>Science</option>
+                            <option value="art" ${idea.category === 'art' ? 'selected' : ''}>Art & Design</option>
+                            <option value="environment" ${idea.category === 'environment' ? 'selected' : ''}>Environment</option>
+                            <option value="social" ${idea.category === 'social' ? 'selected' : ''}>Social Impact</option>
+                            <option value="entertainment" ${idea.category === 'entertainment' ? 'selected' : ''}>Entertainment</option>
+                            <option value="other" ${idea.category === 'other' ? 'selected' : ''}>Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="primary-btn">Save Changes</button>
+                        <a href="idea.html?id=${idea._id}" class="cancel-btn">Cancel</a>
+                    </div>
+                </form>
+            `;
+            
+            // Add event listener for form submission
+            document.getElementById('editIdeaForm').addEventListener('submit', async function(event) {
+                event.preventDefault();
+                
+                const title = document.getElementById('title').value;
+                const description = document.getElementById('description').value;
+                const category = document.getElementById('category').value;
+                
+                try {
+                    await updateIdea(idea._id, { title, description, category });
+                    alert('Idea updated successfully!');
+                    window.location.href = `idea.html?id=${idea._id}`;
+                } catch (error) {
+                    console.error('Error updating idea:', error);
+                    alert('Failed to update idea. Please try again.');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
